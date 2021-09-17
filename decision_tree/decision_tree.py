@@ -37,14 +37,12 @@ class DecisionTree:
                 each row is a sample and the columns correspond
                 to the features.
             y (pd.Series): a vector of discrete ground-truth labels
-        """
-        # TODO: Implement 
-        #grow tree
+        """ 
+        #create decision tree
         self.n_feats = X.shape[1] if not self.n_feats else min(self.n_feats, X.shape[1])
-        self.root = self._grow_tree(X,y)
-        #raise NotImplementedError()
+        self.root = self.expand_tree(X,y)
     
-    def _grow_tree(self, X, y, depth=0):
+    def expand_tree(self, X, y, depth=0):
         n_samples, n_features = X.shape
         n_labels = len(np.unique(y))
 
@@ -59,45 +57,45 @@ class DecisionTree:
 
         #greedy search
         best_feat, best_thresh = self._best_criteria(X, y, feat_idxs)
-        left_idxs, right_idxs = self._split(X[:,best_feat], best_thresh)
-        left = self._grow_tree(X[left_idxs, :], y[left_idxs], depth+1)
-        right = self._grow_tree(X[right_idxs, :], y[right_idxs], depth+1)
+        left_idxs, right_idxs = self.split(X[:,best_feat], best_thresh)
+        left = self.expand_tree(X[left_idxs, :], y[left_idxs], depth+1)
+        right = self.expand_tree(X[right_idxs, :], y[right_idxs], depth+1)
         return Node(best_feat, best_thresh, left, right)
     
     def _best_criteria(self, X, y, feat_idxs):
         best_gain = -1
-        split_idx, split_threh = None, None
+        split_idx, split_threshold = None, None
         for feat_idx in feat_idxs:
             X_column = X[:,feat_idx]
             thresholds = np.unique(X_column)
             for threshold in thresholds:
-                gain = self._information_gain(y, X_column, threshold)
+                gain = self.info_gain(y, X_column, threshold)
 
                 if gain > best_gain:
                     best_gain = gain
                     split_idx = feat_idx
-                    split_threh = threshold
-        return split_idx,split_threh
+                    split_threshold = threshold
+        return split_idx,split_threshold
 
-    def _information_gain(self, y, X_column, split_threh):
-        #parent E
+    def info_gain(self, y, X_column, split_threshold):
+        #entropy of parent
         parent_entropy = formatEntropy(y)
-        #genereate split
-        left_idxs, right_idxs = self._split(X_column, split_threh)
+        #split
+        left_idxs, right_idxs = self.split(X_column, split_threshold)
         #weighted avg child E
         n = len(y)
-        n_l, n_r = len(left_idxs), len(right_idxs)
-        e_l, e_r = formatEntropy(y[left_idxs]), formatEntropy(y[right_idxs])
-        child_entropy = (n_l/n)* e_l +(n_r/n) * e_r
+        n_left, n_right = len(left_idxs), len(right_idxs)
+        e_left, e_right = formatEntropy(y[left_idxs]), formatEntropy(y[right_idxs])
+        child_entropy = (n_left/n)* e_left +(n_right/n) * e_right
 
         #return info gain
-        ig = parent_entropy - child_entropy
-        return ig
+        info_gain = parent_entropy - child_entropy
+        return info_gain
 
 
-    def _split(self, X_column, split_threh):
-        left_idxs = np.argwhere(X_column <= split_threh).flatten()
-        right_idxs = np.argwhere(X_column > split_threh).flatten()
+    def split(self, X_column, split_threshold):
+        left_idxs = np.argwhere(X_column <= split_threshold).flatten()
+        right_idxs = np.argwhere(X_column > split_threshold).flatten()
         return left_idxs, right_idxs
 
     def predict(self, X):
@@ -173,7 +171,6 @@ def accuracy(y_true, y_pred):
 def formatEntropy(y):
     count1 = 0
     count2 = 0
-    testArray = np.array(y)
     for i in y:
         if (i == "Yes" or i == "success"):
             count1 += 1
